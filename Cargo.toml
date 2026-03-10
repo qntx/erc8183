@@ -1,5 +1,5 @@
 [workspace]
-members = ["erc8183"]
+members = ["erc8183", "erc8183-cli"]
 default-members = ["erc8183"]
 resolver = "3"
 

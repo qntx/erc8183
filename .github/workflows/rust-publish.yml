@@ -12,6 +12,6 @@ jobs:
   call-publish:
     uses: qntx/workflows/.github/workflows/rust-publish.yml@main
     with:
-      package: "erc8128"
+      package: "erc8183 erc8183-cli"
     secrets:
       CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
