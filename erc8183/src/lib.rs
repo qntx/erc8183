@@ -4,9 +4,9 @@
 //! [ERC-8183](https://eips.ethereum.org/EIPS/eip-8183) on-chain contracts.
 //!
 //! ERC-8183 defines the **Agentic Commerce Protocol**: a **job** with escrowed
-//! budget, four states (`Open → Funded → Submitted → Terminal`), and an
-//! **evaluator** who alone may mark the job completed. The client funds the
-//! job; the provider submits work; the evaluator attests completion or
+//! budget, six states (`Open → Funded → Submitted → Completed | Rejected | Expired`),
+//! and an **evaluator** who alone may mark the job completed. The client funds
+//! the job; the provider submits work; the evaluator attests completion or
 //! rejection.
 //!
 //! ## Quick Start

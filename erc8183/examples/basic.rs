@@ -16,6 +16,7 @@ use alloy::{
 };
 use erc8183::{Erc8183, types::CreateJobParams};
 
+#[allow(clippy::print_stdout)]
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // 1. Connect to a local Anvil node (or any EVM-compatible RPC).

@@ -161,9 +161,24 @@ Rejected    Rejected        Rejected
 | `reject` | Client/Evaluator | Refund escrow to client |
 | `claimRefund` | Anyone | Refund after expiry (not hookable) |
 
+### Events (EIP-8183 Recommended Minimum)
+
+| Event | Parameters |
+| --- | --- |
+| `JobCreated` | jobId, client, provider, evaluator, expiredAt |
+| `ProviderSet` | jobId, provider |
+| `BudgetSet` | jobId, amount |
+| `JobFunded` | jobId, client, amount |
+| `JobSubmitted` | jobId, provider, deliverable |
+| `JobCompleted` | jobId, evaluator, reason |
+| `JobRejected` | jobId, rejector, reason |
+| `JobExpired` | jobId |
+| `PaymentReleased` | jobId, provider, amount |
+| `Refunded` | jobId, client, amount |
+
 ### Hooks (Optional)
 
-The `IACPHook` interface allows extending the protocol with custom logic:
+The `IACPHook` interface — the only normative Solidity interface in EIP-8183 — allows extending the protocol with custom logic:
 
 ```solidity
 interface IACPHook {
@@ -185,7 +200,7 @@ Hooks are called before and after core functions (except `claimRefund`). Use cas
 - **Inline Solidity bindings** — `sol!` macro preserves struct names, enums, and visibility; no JSON ABI files
 - **Provider-generic** — works with any alloy transport (HTTP, WebSocket, IPC) and any signer configuration
 - **Strict linting** — `pedantic` + `nursery` + `correctness` (deny), see [`clippy.toml`](clippy.toml)
-- **Spec-compliant** — all 8 core functions strictly match EIP-8183 specification
+- **Spec-compliant** — all 8 core functions and 10 recommended events strictly match EIP-8183 specification
 
 ## Workspace
 

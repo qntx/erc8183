@@ -3,17 +3,17 @@
 //! # Usage
 //!
 //! ```rust,no_run
+//! use alloy::primitives::U256;
 //! use alloy::providers::ProviderBuilder;
-//! use erc8183::{Erc8183, Network};
+//! use erc8183::Erc8183;
 //!
 //! # async fn example() -> Result<(), Box<dyn std::error::Error>> {
 //! let provider = ProviderBuilder::new()
 //!     .connect_http("https://eth.llamarpc.com".parse()?);
 //! let client = Erc8183::new(provider)
-//!     .with_network(Network::EthereumMainnet);
+//!     .with_address("0x1234...".parse()?);
 //!
-//! let version = client.job()?.get_version().await?;
-//! println!("Contract version: {version}");
+//! let job = client.job()?.get_job(U256::from(1)).await?;
 //! # Ok(())
 //! # }
 //! ```
@@ -36,17 +36,18 @@ use crate::{
 /// # Examples
 ///
 /// ```rust,no_run
+/// use alloy::primitives::U256;
 /// use alloy::providers::ProviderBuilder;
-/// use erc8183::{Erc8183, Network};
+/// use erc8183::Erc8183;
 ///
 /// # async fn example() -> Result<(), Box<dyn std::error::Error>> {
 /// let provider = ProviderBuilder::new()
 ///     .connect_http("https://eth.llamarpc.com".parse()?);
 ///
 /// let client = Erc8183::new(provider)
-///     .with_network(Network::EthereumMainnet);
+///     .with_address("0x1234...".parse()?);
 ///
-/// let version = client.job()?.get_version().await?;
+/// let job = client.job()?.get_job(U256::from(1)).await?;
 /// # Ok(())
 /// # }
 /// ```
