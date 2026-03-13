@@ -99,9 +99,7 @@ impl<P: Provider> Erc8183<P> {
     /// Returns [`Error::ContractNotConfigured`] if the contract address
     /// has not been set.
     pub fn job(&self) -> Result<JobHandle<&P>> {
-        let address = self
-            .contract_address
-            .ok_or(Error::ContractNotConfigured)?;
+        let address = self.contract_address.ok_or(Error::ContractNotConfigured)?;
         Ok(JobHandle::new(&self.provider, address))
     }
 

@@ -41,8 +41,6 @@ impl<P: Provider> JobHandle<P> {
         Self { address, provider }
     }
 
-    // ── Write Functions ──────────────────────────────────────────────
-
     /// Create a new job in `Open` state.
     ///
     /// The caller (`msg.sender`) becomes the **client**. Provider may be
@@ -262,9 +260,11 @@ impl<P: Provider> JobHandle<P> {
         Ok(())
     }
 
-    // ── Read Functions ───────────────────────────────────────────────
-
     /// Get the full job data by ID.
+    ///
+    /// **Note**: This view function is NOT mandated by EIP-8183 but is a
+    /// common implementation pattern. The call will fail if the target
+    /// contract does not implement `getJob(uint256)`.
     ///
     /// # Errors
     ///
@@ -282,56 +282,6 @@ impl<P: Provider> JobHandle<P> {
             status: JobStatus::from_u8(raw.status)?,
             hook: raw.hook,
         })
-    }
-
-    /// Get the ERC-20 payment token address used by the contract.
-    ///
-    /// # Errors
-    ///
-    /// Returns an error if the RPC call fails.
-    pub async fn payment_token(&self) -> Result<Address> {
-        let contract = AgenticCommerce::new(self.address, &self.provider);
-        Ok(contract.paymentToken().call().await?)
-    }
-
-    /// Get the platform fee in basis points (e.g. 100 = 1%).
-    ///
-    /// # Errors
-    ///
-    /// Returns an error if the RPC call fails.
-    pub async fn fee_bps(&self) -> Result<U256> {
-        let contract = AgenticCommerce::new(self.address, &self.provider);
-        Ok(contract.feeBps().call().await?)
-    }
-
-    /// Get the treasury address that receives platform fees.
-    ///
-    /// # Errors
-    ///
-    /// Returns an error if the RPC call fails.
-    pub async fn treasury(&self) -> Result<Address> {
-        let contract = AgenticCommerce::new(self.address, &self.provider);
-        Ok(contract.treasury().call().await?)
-    }
-
-    /// Get the total number of jobs created.
-    ///
-    /// # Errors
-    ///
-    /// Returns an error if the RPC call fails.
-    pub async fn job_count(&self) -> Result<U256> {
-        let contract = AgenticCommerce::new(self.address, &self.provider);
-        Ok(contract.jobCount().call().await?)
-    }
-
-    /// Get the contract version string.
-    ///
-    /// # Errors
-    ///
-    /// Returns an error if the RPC call fails.
-    pub async fn get_version(&self) -> Result<String> {
-        let contract = AgenticCommerce::new(self.address, &self.provider);
-        Ok(contract.getVersion().call().await?)
     }
 
     /// Parse `jobId` from a transaction receipt's `JobCreated` event.

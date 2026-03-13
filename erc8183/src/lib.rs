@@ -21,16 +21,14 @@
 //! let provider = ProviderBuilder::new()
 //!     .connect_http("https://eth.llamarpc.com".parse()?);
 //!
-//! // 2. Wrap it with the ERC-8183 client
+//! // 2. Wrap it with the ERC-8183 client (no official deployment yet)
 //! let client = Erc8183::new(provider)
 //!     .with_address("0x1234...".parse()?);
 //!
-//! // 3. Interact with the contract
+//! // 3. Get a job handle for contract interactions
 //! let job_handle = client.job()?;
-//! let version = job_handle.get_version().await?;
-//! println!("Contract version: {version}");
 //!
-//! // 4. Create a job
+//! // 4. Create a job (requires signer-enabled provider)
 //! let params = CreateJobParams::new(
 //!     Address::ZERO,                // deferred provider
 //!     "0xEvaluator...".parse()?,    // evaluator
@@ -39,6 +37,10 @@
 //! );
 //! let job_id = job_handle.create_job(&params).await?;
 //! println!("Created job: {job_id}");
+//!
+//! // 5. Query job data
+//! let job = job_handle.get_job(job_id).await?;
+//! println!("Job status: {}", job.status);
 //! # Ok(())
 //! # }
 //! ```
@@ -68,4 +70,3 @@ pub mod types;
 pub use client::Erc8183;
 pub use error::{Error, Result};
 pub use networks::Network;
-
