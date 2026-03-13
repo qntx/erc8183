@@ -4,7 +4,7 @@
 //! specification (Agentic Commerce Protocol) and provide ergonomic Rust
 //! wrappers around the raw contract return values.
 
-use alloy::primitives::{Address, Bytes, FixedBytes, U256};
+use alloy::primitives::{Address, B256, Bytes, FixedBytes, U256};
 use serde::{Deserialize, Serialize};
 
 use crate::error::{Error, Result};
@@ -87,6 +87,9 @@ pub struct Job {
     pub status: JobStatus,
     /// Optional hook contract address. [`Address::ZERO`] means no hook.
     pub hook: Address,
+    /// Deliverable reference submitted by the provider (e.g. IPFS CID hash).
+    /// [`B256::ZERO`] if not yet submitted.
+    pub deliverable: B256,
 }
 
 /// Parameters for creating a new job via [`crate::client::Erc8183::job`].

@@ -281,6 +281,7 @@ impl<P: Provider> JobHandle<P> {
             expired_at: raw.expiredAt,
             status: JobStatus::from_u8(raw.status)?,
             hook: raw.hook,
+            deliverable: raw.deliverable,
         })
     }
 

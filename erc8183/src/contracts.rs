@@ -40,6 +40,7 @@ sol! {
             uint256 expiredAt;
             uint8 status;
             address hook;
+            bytes32 deliverable;
         }
 
         /// Spec: "JobCreated(jobId, client, provider, evaluator, expiredAt)"
