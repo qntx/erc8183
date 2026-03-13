@@ -123,12 +123,20 @@ println!("Budget: {}", job.budget);
 
 ### State Machine
 
-```text
-Open ──────► Funded ──────► Submitted ──────► Completed
-  │            │               │
-  ▼            ▼               ▼
-Rejected    Rejected        Rejected
-            Expired         Expired
+```mermaid
+stateDiagram-v2
+    [*] --> Open: createJob
+    Open --> Funded: fund
+    Open --> Rejected: reject (client)
+    Funded --> Submitted: submit
+    Funded --> Rejected: reject (evaluator)
+    Funded --> Expired: claimRefund
+    Submitted --> Completed: complete
+    Submitted --> Rejected: reject (evaluator)
+    Submitted --> Expired: claimRefund
+    Completed --> [*]: payment released
+    Rejected --> [*]: refund to client
+    Expired --> [*]: refund to client
 ```
 
 | State | Description |
