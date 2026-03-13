@@ -4,9 +4,20 @@ version.workspace = true
 edition.workspace = true
 license.workspace = true
 repository.workspace = true
-description.workspace = true
+readme = "../README.md"
+description = "ERC-8183 Agentic Commerce Protocol Rust SDK."
+keywords = ["ethereum", "erc8183", "ai", "agents", "commerce"]
+categories = ["cryptography::cryptocurrencies", "api-bindings"]
 
 [dependencies]
+alloy.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+
+[dev-dependencies]
+alloy = { workspace = true, features = ["node-bindings"] }
+tokio.workspace = true
 
 [lints]
 workspace = true
