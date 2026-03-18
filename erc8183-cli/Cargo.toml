@@ -6,6 +6,10 @@ license.workspace = true
 repository.workspace = true
 description.workspace = true
 
+[[bin]]
+name = "erc8183"
+path = "src/main.rs"
+
 [dependencies]
 
 [lints]

@@ -51,17 +51,22 @@
 //!
 //! - **[`Erc8183`]** — The top-level client, generic over `P: Provider`.
 //!   Accepts any alloy provider the user has already configured.
-//! - **[`JobHandle`](job::JobHandle)** — All job lifecycle operations:
-//!   create, fund, submit, complete, reject, and query.
+//! - **[`JobHandle`](job::JobHandle)** — Job lifecycle + view + admin.
+//!   Core operations use the standard [`IERC8183`](contracts::IERC8183) binding
+//!   (portable); view/admin use [`AgenticCommerce`](contracts::AgenticCommerce).
 //! - **[`Network`]** — Pre-configured network addresses for known deployments.
 //! - **[`types`]** — Domain types: [`JobStatus`](types::JobStatus),
 //!   [`Job`](types::Job), [`CreateJobParams`](types::CreateJobParams), etc.
-//! - **[`contracts`]** — Raw alloy `sol!` bindings for the `AgenticCommerce`
-//!   contract and the optional `IACPHook` interface.
+//! - **[`contracts`]** — Three-layer `sol!` bindings:
+//!   [`IERC8183`](contracts::IERC8183) (standard, portable),
+//!   [`AgenticCommerce`](contracts::AgenticCommerce) (QNTX implementation),
+//!   [`IACPHook`](contracts::IACPHook) (hook interface).
+//! - **[`hooks`]** — Hook selector constants matching `BaseACPHook`.
 
 pub mod client;
 pub mod contracts;
 pub mod error;
+pub mod hooks;
 pub mod job;
 pub mod networks;
 pub mod types;

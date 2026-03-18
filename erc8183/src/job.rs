@@ -21,12 +21,19 @@ use alloy::{
 };
 
 use crate::{
-    contracts::AgenticCommerce,
+    contracts::{AgenticCommerce, IERC8183},
     error::{Error, Result},
     types::{CreateJobParams, Job, JobStatus},
 };
 
-/// A handle to the Agentic Commerce contract bound to a specific provider.
+/// A handle for interacting with an ERC-8183 contract.
+///
+/// Core lifecycle operations (`create_job`, `fund`, `submit`, `complete`,
+/// `reject`, `claim_refund`) use the standard [`IERC8183`] interface binding
+/// and are portable across **any** ERC-8183 compliant implementation.
+///
+/// View and admin operations (`get_job`, `set_platform_fee`, etc.) use the
+/// [`AgenticCommerce`] binding and are specific to the QNTX implementation.
 ///
 /// Created via [`Erc8183::job()`](crate::Erc8183::job).
 #[derive(Debug)]
@@ -41,6 +48,12 @@ impl<P: Provider> JobHandle<P> {
         Self { address, provider }
     }
 
+    /// Standard ERC-8183 interface — portable across any compliant contract.
+    const fn standard(&self) -> IERC8183::IERC8183Instance<&P> {
+        IERC8183::new(self.address, &self.provider)
+    }
+
+    /// Full QNTX `AgenticCommerce` binding — implementation-specific operations.
     const fn contract(&self) -> AgenticCommerce::AgenticCommerceInstance<&P> {
         AgenticCommerce::new(self.address, &self.provider)
     }
@@ -58,7 +71,7 @@ impl<P: Provider> JobHandle<P> {
     /// `expiredAt` is not in the future).
     pub async fn create_job(&self, params: &CreateJobParams) -> Result<U256> {
         let receipt = self
-            .contract()
+            .standard()
             .createJob(
                 params.provider,
                 params.evaluator,
@@ -87,7 +100,7 @@ impl<P: Provider> JobHandle<P> {
         provider: Address,
         opt_params: Option<Bytes>,
     ) -> Result<()> {
-        self.contract()
+        self.standard()
             .setProvider(job_id, provider, opt_params.unwrap_or_default())
             .send()
             .await?
@@ -110,7 +123,7 @@ impl<P: Provider> JobHandle<P> {
         amount: U256,
         opt_params: Option<Bytes>,
     ) -> Result<()> {
-        self.contract()
+        self.standard()
             .setBudget(job_id, amount, opt_params.unwrap_or_default())
             .send()
             .await?
@@ -137,7 +150,7 @@ impl<P: Provider> JobHandle<P> {
         expected_budget: U256,
         opt_params: Option<Bytes>,
     ) -> Result<()> {
-        self.contract()
+        self.standard()
             .fund(job_id, expected_budget, opt_params.unwrap_or_default())
             .send()
             .await?
@@ -166,7 +179,7 @@ impl<P: Provider> JobHandle<P> {
         deliverable: FixedBytes<32>,
         opt_params: Option<Bytes>,
     ) -> Result<()> {
-        self.contract()
+        self.standard()
             .submit(job_id, deliverable, opt_params.unwrap_or_default())
             .send()
             .await?
@@ -197,7 +210,7 @@ impl<P: Provider> JobHandle<P> {
         reason: FixedBytes<32>,
         opt_params: Option<Bytes>,
     ) -> Result<()> {
-        self.contract()
+        self.standard()
             .complete(job_id, reason, opt_params.unwrap_or_default())
             .send()
             .await?
@@ -226,7 +239,7 @@ impl<P: Provider> JobHandle<P> {
         reason: FixedBytes<32>,
         opt_params: Option<Bytes>,
     ) -> Result<()> {
-        self.contract()
+        self.standard()
             .reject(job_id, reason, opt_params.unwrap_or_default())
             .send()
             .await?
@@ -248,7 +261,7 @@ impl<P: Provider> JobHandle<P> {
     ///
     /// Returns an error if the transaction fails.
     pub async fn claim_refund(&self, job_id: U256) -> Result<()> {
-        self.contract()
+        self.standard()
             .claimRefund(job_id)
             .send()
             .await?
@@ -258,6 +271,9 @@ impl<P: Provider> JobHandle<P> {
     }
 
     /// Get the full job data by ID.
+    ///
+    /// **Note**: Uses the QNTX `AgenticCommerce.getJob()` return struct.
+    /// Other ERC-8183 implementations may return a different struct layout.
     ///
     /// # Errors
     ///
@@ -448,13 +464,15 @@ impl<P: Provider> JobHandle<P> {
     }
 
     /// Parse `jobId` from a transaction receipt's `JobCreated` event.
+    ///
+    /// Uses the standard [`IERC8183::JobCreated`] event for portability.
     fn parse_job_id(receipt: &alloy::rpc::types::TransactionReceipt) -> Result<U256> {
         receipt
             .inner
             .logs()
             .iter()
             .find_map(|log| {
-                log.log_decode::<AgenticCommerce::JobCreated>()
+                log.log_decode::<IERC8183::JobCreated>()
                     .ok()
                     .map(|e| e.inner.data.jobId)
             })

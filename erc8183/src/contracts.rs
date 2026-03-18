@@ -1,25 +1,96 @@
-//! Contract bindings generated via inline Solidity interfaces.
+//! Contract bindings for the ERC-8183 Agentic Commerce Protocol.
 //!
-//! These bindings match the `AgenticCommerce` contract (ERC-8183 implementation)
-//! deployed from `src/AgenticCommerce.sol`. The ABI-encoded struct layouts,
-//! event signatures, and error selectors **must** match the deployed contract
-//! exactly for encoding/decoding to succeed.
+//! Three binding layers, from most portable to most specific:
 //!
-//! The `IACPHook` binding matches the normative interface from the ERC-8183 spec.
+//! 1. **[`IERC8183`]** — Standard interface. Contains only the spec-mandated
+//!    lifecycle functions and recommended events. Portable across **any**
+//!    ERC-8183 compliant implementation.
+//!
+//! 2. **[`AgenticCommerce`]** — Full ABI for the QNTX implementation. Includes
+//!    everything in `IERC8183` plus implementation-specific admin functions,
+//!    custom errors, view getters, and the `Job` return struct.
+//!
+//! 3. **[`IACPHook`]** — The only normative Solidity interface in EIP-8183.
+//!    Used by hook contracts that extend the core protocol.
+//!
+//! Both `IERC8183` and `AgenticCommerce` can be instantiated on the same
+//! contract address — they are just different "views" of the same bytecode.
 
 use alloy::sol;
 
 sol! {
-    /// ERC-8183 Agentic Commerce Protocol — job escrow with evaluator attestation.
+    /// IERC8183 — Standard interface for the Agentic Commerce Protocol.
     ///
-    /// Single ERC-20 payment token per contract. Optional hooks for extensibility.
-    /// `claimRefund` is deliberately NOT hookable per spec.
-    /// WARNING: Fee-on-transfer / rebasing tokens are NOT supported.
+    /// Contains only spec-mandated lifecycle functions and recommended events.
+    /// Use this binding for portable interactions with **any** ERC-8183 contract.
+    /// For implementation-specific features (admin, view, errors), use
+    /// [`AgenticCommerce`] instead.
+    #[allow(missing_docs, clippy::too_many_arguments)]
+    #[sol(rpc)]
+    interface IERC8183 {
+        // Spec-recommended events
+        event JobCreated(uint256 indexed jobId, address indexed client, address indexed provider, address evaluator, uint256 expiredAt, address hook);
+        event ProviderSet(uint256 indexed jobId, address indexed provider);
+        event BudgetSet(uint256 indexed jobId, uint256 amount);
+        event JobFunded(uint256 indexed jobId, address indexed client, uint256 amount);
+        event JobSubmitted(uint256 indexed jobId, address indexed provider, bytes32 deliverable);
+        event JobCompleted(uint256 indexed jobId, address indexed evaluator, bytes32 reason);
+        event JobRejected(uint256 indexed jobId, address indexed rejector, bytes32 reason);
+        event JobExpired(uint256 indexed jobId);
+        event PaymentReleased(uint256 indexed jobId, address indexed provider, uint256 amount);
+        event Refunded(uint256 indexed jobId, address indexed client, uint256 amount);
+
+        // Core lifecycle functions
+        function createJob(address provider, address evaluator, uint256 expiredAt, string calldata description, address hook) external returns (uint256 jobId);
+        function setProvider(uint256 jobId, address provider, bytes calldata optParams) external;
+        function setBudget(uint256 jobId, uint256 amount, bytes calldata optParams) external;
+        function fund(uint256 jobId, uint256 expectedBudget, bytes calldata optParams) external;
+        function submit(uint256 jobId, bytes32 deliverable, bytes calldata optParams) external;
+        function complete(uint256 jobId, bytes32 reason, bytes calldata optParams) external;
+        function reject(uint256 jobId, bytes32 reason, bytes calldata optParams) external;
+        function claimRefund(uint256 jobId) external;
+    }
+}
+
+sol! {
+    /// `IACPHook` — the only normative Solidity interface in EIP-8183.
+    ///
+    /// Hooks are called before and after core functions (except `claimRefund`).
+    /// The `selector` identifies which core function triggered the hook,
+    /// and `data` carries ABI-encoded arguments specific to each action.
+    ///
+    /// Data encoding per action:
+    /// - `setProvider`: `abi.encode(address provider, bytes optParams)`
+    /// - `setBudget`: `abi.encode(uint256 amount, bytes optParams)`
+    /// - `fund`: `optParams` (raw bytes)
+    /// - `submit`: `abi.encode(bytes32 deliverable, bytes optParams)`
+    /// - `complete`: `abi.encode(bytes32 reason, bytes optParams)`
+    /// - `reject`: `abi.encode(bytes32 reason, bytes optParams)`
+    #[allow(missing_docs)]
+    #[sol(rpc)]
+    interface IACPHook {
+        function beforeAction(uint256 jobId, bytes4 selector, bytes calldata data) external;
+        function afterAction(uint256 jobId, bytes4 selector, bytes calldata data) external;
+    }
+}
+
+sol! {
+    /// `AgenticCommerce` — Full ABI for the QNTX ERC-8183 implementation.
+    ///
+    /// Includes all [`IERC8183`] lifecycle functions plus:
+    /// - `Job` struct with `getJob()` view
+    /// - Custom errors with descriptive revert reasons
+    /// - Admin functions (`onlyOwner`): fee management, treasury, hook whitelist
+    /// - View getters for contract configuration
+    /// - `Ownable2Step` ownership transfer
+    ///
+    /// Use this binding when targeting the QNTX `AgenticCommerce` contract.
+    /// For portable interactions with any ERC-8183 contract, use [`IERC8183`].
     #[allow(missing_docs, clippy::too_many_arguments)]
     #[sol(rpc)]
     contract AgenticCommerce {
         /// Minimal job descriptor returned by `getJob()`.
-        /// Field order must match `IERC8183.Job` exactly for ABI compatibility.
+        /// Field order must match the on-chain `IERC8183.Job` struct exactly.
         struct Job {
             uint256 id;
             address client;
@@ -33,7 +104,7 @@ sol! {
             bytes32 deliverable;
         }
 
-        // IERC8183 events
+        // IERC8183 events (duplicated for unified type access)
         event JobCreated(uint256 indexed jobId, address indexed client, address indexed provider, address evaluator, uint256 expiredAt, address hook);
         event ProviderSet(uint256 indexed jobId, address indexed provider);
         event BudgetSet(uint256 indexed jobId, uint256 amount);
@@ -45,7 +116,7 @@ sol! {
         event PaymentReleased(uint256 indexed jobId, address indexed provider, uint256 amount);
         event Refunded(uint256 indexed jobId, address indexed client, uint256 amount);
 
-        // Contract-specific events
+        // Implementation-specific events
         event EvaluatorFeePaid(uint256 indexed jobId, address indexed evaluator, uint256 amount);
         event HookWhitelistUpdated(address indexed hook, bool status);
         event PlatformFeeUpdated(uint256 oldFeeBp, uint256 newFeeBp);
@@ -73,7 +144,7 @@ sol! {
         error OwnableUnauthorizedAccount(address account);
         error OwnableInvalidOwner(address owner);
 
-        // Core lifecycle functions (IERC8183)
+        // Core lifecycle functions (same ABI as IERC8183)
         function createJob(address provider, address evaluator, uint256 expiredAt, string calldata description, address hook) external returns (uint256 jobId);
         function setProvider(uint256 jobId, address provider, bytes calldata optParams) external;
         function setBudget(uint256 jobId, uint256 amount, bytes calldata optParams) external;
@@ -109,27 +180,5 @@ sol! {
         function transferOwnership(address newOwner) external;
         function acceptOwnership() external;
         function renounceOwnership() external;
-    }
-}
-
-sol! {
-    /// `IACPHook` — the only normative Solidity interface in EIP-8183.
-    ///
-    /// Hooks are called before and after core functions (except `claimRefund`).
-    /// The `selector` identifies which core function triggered the hook,
-    /// and `data` carries ABI-encoded arguments specific to each action.
-    ///
-    /// Data encoding per action:
-    /// - `setProvider`: `abi.encode(address provider, bytes optParams)`
-    /// - `setBudget`: `abi.encode(uint256 amount, bytes optParams)`
-    /// - `fund`: `optParams` (raw bytes)
-    /// - `submit`: `abi.encode(bytes32 deliverable, bytes optParams)`
-    /// - `complete`: `abi.encode(bytes32 reason, bytes optParams)`
-    /// - `reject`: `abi.encode(bytes32 reason, bytes optParams)`
-    #[allow(missing_docs)]
-    #[sol(rpc)]
-    interface IACPHook {
-        function beforeAction(uint256 jobId, bytes4 selector, bytes calldata data) external;
-        function afterAction(uint256 jobId, bytes4 selector, bytes calldata data) external;
     }
 }
