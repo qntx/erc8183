@@ -1,6 +1,10 @@
-<!-- markdownlint-disable MD033 MD041 MD001 -->
+<!-- markdownlint-disable MD033 MD041 MD036 -->
+
+<div align="center">
 
 # erc8183
+
+**The Commerce Layer for AI Agents**
 
 [![CI][ci-badge]][ci-url]
 [![crates.io][crate-badge]][crate-url]
@@ -19,107 +23,53 @@
 [rust-badge]: https://img.shields.io/badge/rust-edition%202024-orange.svg
 [rust-url]: https://doc.rust-lang.org/edition-guide/
 
-**Type-safe Rust SDK for the [ERC-8183](https://eips.ethereum.org/EIPS/eip-8183) Agentic Commerce Protocol — on-chain job escrow with evaluator attestation for AI agent commerce.**
+Type-safe Rust SDK for the [ERC-8183](https://eips.ethereum.org/EIPS/eip-8183) Agentic Commerce Protocol.
+On-chain job escrow with evaluator attestation for AI agent commerce.
 
-ERC-8183 enables **trustless commerce between AI agents**: a client locks funds in escrow, a provider submits work, and an evaluator attests completion or rejection. This SDK provides ergonomic, alloy-native bindings for the full job lifecycle with strict type safety and comprehensive documentation.
+[Quick Start](#quick-start) | [Protocol Reference](#erc-8183-protocol) | [API docs][doc-url]
 
-> **Note**: ERC-8183 is currently a **Draft** EIP with no official contract deployments yet. Once deployed, update the contract address and the SDK is ready to use.
+</div>
 
-See [SECURITY.md](SECURITY.md) before using in production.
+## Overview
+
+ERC-8183 enables **trustless commerce between AI agents**: a client locks funds in escrow, a provider submits work, and an evaluator attests completion or rejection.
+
+This SDK provides type-safe Rust bindings for the protocol, built on [alloy](https://github.com/alloy-rs/alloy).
+
+> [!NOTE]
+> ERC-8183 is currently a **Draft** EIP. See [SECURITY.md](SECURITY.md) before production use.
+>
+> Reference implementation: **[qntx/market-contract](https://github.com/qntx/market-contract)**
 
 ## Quick Start
 
-### Create a Job (Write)
-
 ```rust
-use alloy::{
-    network::EthereumWallet,
-    primitives::{Address, U256},
-    providers::ProviderBuilder,
-    signers::local::PrivateKeySigner,
-};
 use erc8183::{Erc8183, types::CreateJobParams};
 
-let signer: PrivateKeySigner = std::env::var("PRIVATE_KEY")?.parse()?;
-let wallet = EthereumWallet::from(signer);
+// Connect to contract
+let job = Erc8183::new(provider).with_address(contract_addr).job()?;
 
-let provider = ProviderBuilder::new()
-    .wallet(wallet)
-    .connect_http("https://eth.llamarpc.com".parse()?);
+// Create → Fund → Submit → Complete
+let id = job.create_job(&CreateJobParams::new(provider, evaluator, expires, "task")).await?;
+job.fund(id, budget, None).await?;
+job.submit(id, deliverable, None).await?;
+job.complete(id, reason, None).await?;
 
-// Replace with actual deployed contract address
-let client = Erc8183::new(provider)
-    .with_address("0x1234...".parse()?);
-
-let job_handle = client.job()?;
-
-// Create a job with deferred provider assignment
-let params = CreateJobParams::new(
-    Address::ZERO,                  // provider (deferred)
-    "0xEvaluator...".parse()?,      // evaluator
-    U256::from(1_900_000_000u64),   // expiredAt (Unix timestamp)
-    "Build a REST API for payments",
-);
-
-let job_id = job_handle.create_job(&params).await?;
-println!("Created job: {job_id}");
+// Query
+let data = job.get_job(id).await?;
 ```
 
-### Full Job Lifecycle
+The full API mirrors the on-chain functions: `set_provider`, `set_budget`, `reject`, `claim_refund`, plus view/admin methods like `total_jobs`, `payment_token`, `set_platform_fee`, etc.
 
-```rust
-// 1. Client creates job (see above)
-let job_id = job_handle.create_job(&params).await?;
+### Three-Layer Bindings
 
-// 2. Client assigns provider
-job_handle.set_provider(job_id, provider_address, None).await?;
+| Layer | Binding | Scope |
+| --- | --- | --- |
+| **Standard** | [`IERC8183`](erc8183/src/contracts.rs) | Spec-mandated lifecycle functions and events. Works with **any** ERC-8183 contract. |
+| **Implementation** | [`AgenticCommerce`](erc8183/src/contracts.rs) | Full QNTX ABI: `Job` struct, custom errors, admin functions, view getters, `Ownable2Step`. |
+| **Hook** | [`IACPHook`](erc8183/src/contracts.rs) | Normative hook interface. `beforeAction` / `afterAction` callbacks. |
 
-// 3. Client or provider sets budget
-job_handle.set_budget(job_id, U256::from(1000), None).await?;
-
-// 4. Client funds escrow (requires ERC-20 approval)
-job_handle.fund(job_id, U256::from(1000), None).await?;
-
-// 5. Provider submits work
-let deliverable = FixedBytes::from_slice(&ipfs_cid_hash);
-job_handle.submit(job_id, deliverable, None).await?;
-
-// 6. Evaluator completes (releases escrow to provider)
-job_handle.complete(job_id, FixedBytes::ZERO, None).await?;
-
-// Or: Evaluator rejects (refunds client)
-// job_handle.reject(job_id, reason_hash, None).await?;
-```
-
-### Query Job Data (Read-Only)
-
-```rust
-use alloy::providers::ProviderBuilder;
-use erc8183::Erc8183;
-
-let provider = ProviderBuilder::new()
-    .connect_http("https://eth.llamarpc.com".parse()?);
-
-let client = Erc8183::new(provider)
-    .with_address("0x1234...".parse()?);
-
-let job = client.job()?.get_job(U256::from(1)).await?;
-println!("Status: {}", job.status);
-println!("Client: {}", job.client);
-println!("Provider: {}", job.provider);
-println!("Budget: {}", job.budget);
-```
-
-## Architecture
-
-| Module | Description |
-| --- | --- |
-| **[`Erc8183`](erc8183/src/client.rs)** | Top-level client — generic over `P: Provider`, builder pattern for address configuration |
-| **[`JobHandle`](erc8183/src/job.rs)** | Job lifecycle + view + admin — `create_job`, `fund`, `submit`, `complete`, `reject`, `claim_refund`, `get_job`, `total_jobs`, `set_platform_fee`, etc. |
-| **[`types`](erc8183/src/types.rs)** | Domain types — `JobStatus`, `Job`, `CreateJobParams`, `SubmitParams`, `AttestParams` |
-| **[`contracts`](erc8183/src/contracts.rs)** | Inline Solidity bindings (`sol!` macro) — `AgenticCommerce` contract and `IACPHook` interface |
-| **[`error`](erc8183/src/error.rs)** | Error types — `Error` enum with `thiserror`, covers contract/transport/status errors |
-| **[`networks`](erc8183/src/networks.rs)** | Network configuration — placeholder addresses for future deployments |
+Core lifecycle operations (`create_job`, `fund`, `submit`, `complete`, `reject`, `claim_refund`) are sent through `IERC8183` for portability. View and admin operations use `AgenticCommerce`.
 
 ## ERC-8183 Protocol
 
@@ -136,59 +86,31 @@ stateDiagram-v2
     Submitted --> Completed: complete
     Submitted --> Rejected: reject (evaluator)
     Submitted --> Expired: claimRefund
-    Completed --> [*]: payment released
-    Rejected --> [*]: refund to client
-    Expired --> [*]: refund to client
+    Completed --> [*]
+    Rejected --> [*]
+    Expired --> [*]
 ```
 
 | State | Description |
 | --- | --- |
-| **Open** | Created; budget not yet set or not yet funded |
-| **Funded** | Budget escrowed; provider may submit work |
-| **Submitted** | Work submitted; evaluator may complete or reject |
-| **Completed** | Terminal; escrow released to provider |
-| **Rejected** | Terminal; escrow refunded to client |
-| **Expired** | Terminal; refund after `expiredAt` timestamp |
+| **Open** | Created; budget not yet set or funded. Client may `setBudget`, `fund`, or `reject`. |
+| **Funded** | Budget escrowed. Provider may `submit`; evaluator may `reject`. |
+| **Submitted** | Work delivered. Evaluator may `complete` or `reject`. |
+| **Completed** | Terminal. Escrow released to provider minus fees. |
+| **Rejected** | Terminal. Escrow refunded to client. |
+| **Expired** | Terminal. Refund after `expiredAt` via `claimRefund`. |
 
 ### Roles
 
 | Role | Capabilities |
 | --- | --- |
-| **Client** | Creates job, sets provider/budget, funds escrow, rejects (Open only) |
-| **Provider** | Proposes budget, submits work deliverable |
-| **Evaluator** | Completes or rejects (Funded/Submitted states) |
+| **Client** | `createJob` · `setProvider` · `setBudget` · `fund` · `reject` (Open only) |
+| **Provider** | `setBudget` · `submit` |
+| **Evaluator** | `complete` · `reject` (Funded/Submitted) |
 
-### Core Functions (EIP-8183 Spec)
+### Hooks
 
-| Function | Caller | Description |
-| --- | --- | --- |
-| `createJob` | Client | Create job in Open state |
-| `setProvider` | Client | Assign provider to Open job |
-| `setBudget` | Client/Provider | Set or negotiate budget |
-| `fund` | Client | Fund escrow, transition to Funded |
-| `submit` | Provider | Submit work, transition to Submitted |
-| `complete` | Evaluator | Release escrow to provider |
-| `reject` | Client/Evaluator | Refund escrow to client |
-| `claimRefund` | Anyone | Refund after expiry (not hookable) |
-
-### Events (EIP-8183 Recommended Minimum)
-
-| Event | Parameters |
-| --- | --- |
-| `JobCreated` | jobId, client, provider, evaluator, expiredAt, hook |
-| `ProviderSet` | jobId, provider |
-| `BudgetSet` | jobId, amount |
-| `JobFunded` | jobId, client, amount |
-| `JobSubmitted` | jobId, provider, deliverable |
-| `JobCompleted` | jobId, evaluator, reason |
-| `JobRejected` | jobId, rejector, reason |
-| `JobExpired` | jobId |
-| `PaymentReleased` | jobId, provider, amount |
-| `Refunded` | jobId, client, amount |
-
-### Hooks (Optional)
-
-The `IACPHook` interface — the only normative Solidity interface in EIP-8183 — allows extending the protocol with custom logic:
+`IACPHook` is the only normative Solidity interface in EIP-8183. It enables protocol extensions without modifying the core contract:
 
 ```solidity
 interface IACPHook {
@@ -197,45 +119,33 @@ interface IACPHook {
 }
 ```
 
-Hooks are called before and after core functions (except `claimRefund`). Use cases include:
+All core functions except `claimRefund` are hookable. `claimRefund` is deliberately non-hookable as a safety mechanism — refunds after expiry cannot be blocked.
 
-- Bidding/auction mechanisms
-- Two-phase token transfers
-- Reputation integration ([ERC-8004](https://eips.ethereum.org/EIPS/eip-8004))
-- Custom validation logic
+The `hooks` module exposes selector constants for `BaseACPHook` routing:
 
-## Design
+```rust
+use erc8183::hooks;
 
-- **Zero `async_trait`** — pure RPITIT, no trait-object overhead
-- **Inline Solidity bindings** — `sol!` macro preserves struct names, enums, and visibility; no JSON ABI files
-- **Provider-generic** — works with any alloy transport (HTTP, WebSocket, IPC) and any signer configuration
-- **Strict linting** — `pedantic` + `nursery` + `correctness` (deny), see [`clippy.toml`](clippy.toml)
-- **Spec-compliant** — all 8 core functions and 10 recommended events strictly match EIP-8183 specification
-
-## Workspace
-
-| Crate | Description |
-| --- | --- |
-| `erc8183` | Core SDK library |
-| `erc8183-cli` | CLI tool (planned) |
-
-## Examples
-
-| Example | Description |
-| --- | --- |
-| [`basic`](erc8183/examples/basic.rs) | Basic client setup and job parameter preparation |
-
-```bash
-cargo run --example basic
+assert_eq!(hooks::SEL_FUND, erc8183::contracts::IERC8183::fundCall::SELECTOR.into());
 ```
+
+## Design Principles
+
+| Principle | Detail |
+| --- | --- |
+| **Zero `async_trait`** | Pure RPITIT — no trait-object overhead, no heap allocation per call |
+| **Inline `sol!` bindings** | Preserves struct names and visibility; no JSON ABI files to manage |
+| **Provider-generic** | Works with any alloy transport (HTTP, WebSocket, IPC) and signer |
+| **Layered bindings** | `IERC8183` for portability, `AgenticCommerce` for full access |
+| **Strict linting** | `clippy::pedantic` + `nursery` + `correctness` (deny) |
 
 ## Related Standards
 
 | Standard | Relationship |
 | --- | --- |
-| [ERC-8004](https://eips.ethereum.org/EIPS/eip-8004) | Trustless Agents — reputation/identity layer, composable with ERC-8183 |
-| [ERC-20](https://eips.ethereum.org/EIPS/eip-20) | Payment token standard used for escrow |
-| [ERC-2771](https://eips.ethereum.org/EIPS/eip-2771) | Meta-transactions — optional gasless execution support |
+| [ERC-8004](https://eips.ethereum.org/EIPS/eip-8004) | Trustless Agents — reputation layer, composable via hooks |
+| [ERC-20](https://eips.ethereum.org/EIPS/eip-20) | Payment token standard for escrow |
+| [ERC-2771](https://eips.ethereum.org/EIPS/eip-2771) | Meta-transactions — gasless agent execution |
 
 ## License
 
