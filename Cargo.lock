@@ -1634,7 +1634,7 @@ checksum = "877a4ace8713b0bcf2a4e7eec82529c029f1d0619886d18145fea96c3ffe5c0f"
 
 [[package]]
 name = "erc8183"
-version = "0.2.0"
+version = "0.3.0"
 dependencies = [
  "alloy",
  "serde",
@@ -1645,7 +1645,7 @@ dependencies = [
 
 [[package]]
 name = "erc8183-cli"
-version = "0.2.0"
+version = "0.3.0"
 
 [[package]]
 name = "errno"

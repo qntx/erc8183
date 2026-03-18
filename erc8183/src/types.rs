@@ -71,6 +71,8 @@ impl std::fmt::Display for JobStatus {
 /// A fully resolved job as returned by `getJob`.
 #[derive(Debug, Clone)]
 pub struct Job {
+    /// The on-chain job identifier.
+    pub id: U256,
     /// The address that created and funded the job.
     pub client: Address,
     /// The address that performs the work. May be [`Address::ZERO`] if not yet assigned.

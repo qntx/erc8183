@@ -1,3 +1,5 @@
+<!-- markdownlint-disable MD033 MD041 MD001 -->
+
 # erc8183
 
 [![CI][ci-badge]][ci-url]
@@ -113,7 +115,7 @@ println!("Budget: {}", job.budget);
 | Module | Description |
 | --- | --- |
 | **[`Erc8183`](erc8183/src/client.rs)** | Top-level client — generic over `P: Provider`, builder pattern for address configuration |
-| **[`JobHandle`](erc8183/src/job.rs)** | Job operations — `create_job`, `set_provider`, `set_budget`, `fund`, `submit`, `complete`, `reject`, `claim_refund` |
+| **[`JobHandle`](erc8183/src/job.rs)** | Job lifecycle + view + admin — `create_job`, `fund`, `submit`, `complete`, `reject`, `claim_refund`, `get_job`, `total_jobs`, `set_platform_fee`, etc. |
 | **[`types`](erc8183/src/types.rs)** | Domain types — `JobStatus`, `Job`, `CreateJobParams`, `SubmitParams`, `AttestParams` |
 | **[`contracts`](erc8183/src/contracts.rs)** | Inline Solidity bindings (`sol!` macro) — `AgenticCommerce` contract and `IACPHook` interface |
 | **[`error`](erc8183/src/error.rs)** | Error types — `Error` enum with `thiserror`, covers contract/transport/status errors |
@@ -173,7 +175,7 @@ stateDiagram-v2
 
 | Event | Parameters |
 | --- | --- |
-| `JobCreated` | jobId, client, provider, evaluator, expiredAt |
+| `JobCreated` | jobId, client, provider, evaluator, expiredAt, hook |
 | `ProviderSet` | jobId, provider |
 | `BudgetSet` | jobId, amount |
 | `JobFunded` | jobId, client, amount |

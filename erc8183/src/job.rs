@@ -41,6 +41,10 @@ impl<P: Provider> JobHandle<P> {
         Self { address, provider }
     }
 
+    const fn contract(&self) -> AgenticCommerce::AgenticCommerceInstance<&P> {
+        AgenticCommerce::new(self.address, &self.provider)
+    }
+
     /// Create a new job in `Open` state.
     ///
     /// The caller (`msg.sender`) becomes the **client**. Provider may be
@@ -53,8 +57,8 @@ impl<P: Provider> JobHandle<P> {
     /// Returns an error if the transaction fails (e.g. evaluator is zero,
     /// `expiredAt` is not in the future).
     pub async fn create_job(&self, params: &CreateJobParams) -> Result<U256> {
-        let contract = AgenticCommerce::new(self.address, &self.provider);
-        let receipt = contract
+        let receipt = self
+            .contract()
             .createJob(
                 params.provider,
                 params.evaluator,
@@ -83,8 +87,7 @@ impl<P: Provider> JobHandle<P> {
         provider: Address,
         opt_params: Option<Bytes>,
     ) -> Result<()> {
-        let contract = AgenticCommerce::new(self.address, &self.provider);
-        contract
+        self.contract()
             .setProvider(job_id, provider, opt_params.unwrap_or_default())
             .send()
             .await?
@@ -107,8 +110,7 @@ impl<P: Provider> JobHandle<P> {
         amount: U256,
         opt_params: Option<Bytes>,
     ) -> Result<()> {
-        let contract = AgenticCommerce::new(self.address, &self.provider);
-        contract
+        self.contract()
             .setBudget(job_id, amount, opt_params.unwrap_or_default())
             .send()
             .await?
@@ -135,8 +137,7 @@ impl<P: Provider> JobHandle<P> {
         expected_budget: U256,
         opt_params: Option<Bytes>,
     ) -> Result<()> {
-        let contract = AgenticCommerce::new(self.address, &self.provider);
-        contract
+        self.contract()
             .fund(job_id, expected_budget, opt_params.unwrap_or_default())
             .send()
             .await?
@@ -165,8 +166,7 @@ impl<P: Provider> JobHandle<P> {
         deliverable: FixedBytes<32>,
         opt_params: Option<Bytes>,
     ) -> Result<()> {
-        let contract = AgenticCommerce::new(self.address, &self.provider);
-        contract
+        self.contract()
             .submit(job_id, deliverable, opt_params.unwrap_or_default())
             .send()
             .await?
@@ -179,7 +179,7 @@ impl<P: Provider> JobHandle<P> {
     ///
     /// Must be called by the **evaluator** when the job is in `Submitted` state.
     /// On completion, escrowed funds are transferred to the provider (minus
-    /// optional platform fee to treasury).
+    /// optional platform and evaluator fees).
     ///
     /// # Parameters
     ///
@@ -197,8 +197,7 @@ impl<P: Provider> JobHandle<P> {
         reason: FixedBytes<32>,
         opt_params: Option<Bytes>,
     ) -> Result<()> {
-        let contract = AgenticCommerce::new(self.address, &self.provider);
-        contract
+        self.contract()
             .complete(job_id, reason, opt_params.unwrap_or_default())
             .send()
             .await?
@@ -227,8 +226,7 @@ impl<P: Provider> JobHandle<P> {
         reason: FixedBytes<32>,
         opt_params: Option<Bytes>,
     ) -> Result<()> {
-        let contract = AgenticCommerce::new(self.address, &self.provider);
-        contract
+        self.contract()
             .reject(job_id, reason, opt_params.unwrap_or_default())
             .send()
             .await?
@@ -250,8 +248,7 @@ impl<P: Provider> JobHandle<P> {
     ///
     /// Returns an error if the transaction fails.
     pub async fn claim_refund(&self, job_id: U256) -> Result<()> {
-        let contract = AgenticCommerce::new(self.address, &self.provider);
-        contract
+        self.contract()
             .claimRefund(job_id)
             .send()
             .await?
@@ -262,17 +259,13 @@ impl<P: Provider> JobHandle<P> {
 
     /// Get the full job data by ID.
     ///
-    /// **Note**: This view function is NOT mandated by EIP-8183 but is a
-    /// common implementation pattern. The call will fail if the target
-    /// contract does not implement `getJob(uint256)`.
-    ///
     /// # Errors
     ///
     /// Returns an error if the RPC call fails or the status is invalid.
     pub async fn get_job(&self, job_id: U256) -> Result<Job> {
-        let contract = AgenticCommerce::new(self.address, &self.provider);
-        let raw = contract.getJob(job_id).call().await?;
+        let raw = self.contract().getJob(job_id).call().await?;
         Ok(Job {
+            id: raw.id,
             client: raw.client,
             provider: raw.provider,
             evaluator: raw.evaluator,
@@ -283,6 +276,175 @@ impl<P: Provider> JobHandle<P> {
             hook: raw.hook,
             deliverable: raw.deliverable,
         })
+    }
+
+    /// Get the total number of jobs created.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the RPC call fails.
+    pub async fn total_jobs(&self) -> Result<U256> {
+        Ok(self.contract().totalJobs().call().await?)
+    }
+
+    /// Get the ERC-20 payment token address.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the RPC call fails.
+    pub async fn payment_token(&self) -> Result<Address> {
+        Ok(self.contract().PAYMENT_TOKEN().call().await?)
+    }
+
+    /// Get the current platform fee in basis points.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the RPC call fails.
+    pub async fn platform_fee_bp(&self) -> Result<U256> {
+        Ok(self.contract().platformFeeBp().call().await?)
+    }
+
+    /// Get the current evaluator fee in basis points.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the RPC call fails.
+    pub async fn evaluator_fee_bp(&self) -> Result<U256> {
+        Ok(self.contract().evaluatorFeeBp().call().await?)
+    }
+
+    /// Get the platform treasury address.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the RPC call fails.
+    pub async fn treasury(&self) -> Result<Address> {
+        Ok(self.contract().treasury().call().await?)
+    }
+
+    /// Check if a hook contract is whitelisted.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the RPC call fails.
+    pub async fn is_hook_whitelisted(&self, hook: Address) -> Result<bool> {
+        Ok(self.contract().whitelistedHooks(hook).call().await?)
+    }
+
+    /// Get the contract owner address.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the RPC call fails.
+    pub async fn owner(&self) -> Result<Address> {
+        Ok(self.contract().owner().call().await?)
+    }
+
+    /// Get the pending owner address (for two-step ownership transfer).
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the RPC call fails.
+    pub async fn pending_owner(&self) -> Result<Address> {
+        Ok(self.contract().pendingOwner().call().await?)
+    }
+
+    /// Set the platform fee in basis points. Restricted to the contract owner.
+    ///
+    /// The combined platform + evaluator fee must not exceed `MAX_FEE_BP` (5000).
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the transaction fails.
+    pub async fn set_platform_fee(&self, new_fee_bp: U256) -> Result<()> {
+        self.contract()
+            .setPlatformFee(new_fee_bp)
+            .send()
+            .await?
+            .get_receipt()
+            .await?;
+        Ok(())
+    }
+
+    /// Set the evaluator fee in basis points. Restricted to the contract owner.
+    ///
+    /// The combined platform + evaluator fee must not exceed `MAX_FEE_BP` (5000).
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the transaction fails.
+    pub async fn set_evaluator_fee(&self, new_fee_bp: U256) -> Result<()> {
+        self.contract()
+            .setEvaluatorFee(new_fee_bp)
+            .send()
+            .await?
+            .get_receipt()
+            .await?;
+        Ok(())
+    }
+
+    /// Set the treasury address. Restricted to the contract owner.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the transaction fails.
+    pub async fn set_treasury(&self, new_treasury: Address) -> Result<()> {
+        self.contract()
+            .setTreasury(new_treasury)
+            .send()
+            .await?
+            .get_receipt()
+            .await?;
+        Ok(())
+    }
+
+    /// Whitelist or de-whitelist a hook contract. Restricted to the contract owner.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the transaction fails.
+    pub async fn set_hook_whitelist(&self, hook: Address, status: bool) -> Result<()> {
+        self.contract()
+            .setHookWhitelist(hook, status)
+            .send()
+            .await?
+            .get_receipt()
+            .await?;
+        Ok(())
+    }
+
+    /// Start two-step ownership transfer. Restricted to the current owner.
+    ///
+    /// The `new_owner` must call [`accept_ownership`](Self::accept_ownership)
+    /// to complete the transfer.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the transaction fails.
+    pub async fn transfer_ownership(&self, new_owner: Address) -> Result<()> {
+        self.contract()
+            .transferOwnership(new_owner)
+            .send()
+            .await?
+            .get_receipt()
+            .await?;
+        Ok(())
+    }
+
+    /// Accept a pending ownership transfer. Must be called by the pending owner.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the transaction fails.
+    pub async fn accept_ownership(&self) -> Result<()> {
+        self.contract()
+            .acceptOwnership()
+            .send()
+            .await?
+            .get_receipt()
+            .await?;
+        Ok(())
     }
 
     /// Parse `jobId` from a transaction receipt's `JobCreated` event.
