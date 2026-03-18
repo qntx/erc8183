@@ -2,7 +2,7 @@
 
 <div align="center">
 
-# erc8183
+# ERC-8183
 
 **The Commerce Layer for AI Agents**
 
