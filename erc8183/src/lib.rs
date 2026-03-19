@@ -23,9 +23,8 @@
 //!     .connect_http(network.rpc_url().parse()?);
 //!
 //! // 2. Create client and get a job handle
-//! let job = Erc8183::new(provider)
-//!     .with_network(network)
-//!     .job()?;
+//! let client = Erc8183::new(provider).with_network(network);
+//! let job = client.job()?;
 //!
 //! // 3. Create a job (requires signer-enabled provider)
 //! let params = CreateJobParams::new(
