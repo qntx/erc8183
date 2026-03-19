@@ -8,14 +8,14 @@
 //! use erc8183::{Erc8183, Network};
 //!
 //! # async fn example() -> Result<(), Box<dyn std::error::Error>> {
+//! let network = Network::MonadMainnet;
 //! let provider = ProviderBuilder::new()
-//!     .connect_http("https://monad-rpc.example.com".parse()?);
+//!     .connect_http(network.rpc_url().parse()?);
 //!
-//! // Built-in network (Monad Mainnet)
-//! let client = Erc8183::new(provider)
-//!     .with_network(Network::MonadMainnet);
-//!
-//! let job = client.job()?.get_job(U256::from(1)).await?;
+//! let job = Erc8183::new(provider)
+//!     .with_network(network)
+//!     .job()?
+//!     .get_job(U256::from(1)).await?;
 //! # Ok(())
 //! # }
 //! ```
@@ -44,11 +44,12 @@ use crate::{
 /// use erc8183::{Erc8183, Network};
 ///
 /// # async fn example() -> Result<(), Box<dyn std::error::Error>> {
+/// let network = Network::MonadMainnet;
 /// let client = Erc8183::new(
 ///     ProviderBuilder::new()
-///         .connect_http("https://monad-rpc.example.com".parse()?),
+///         .connect_http(network.rpc_url().parse()?),
 /// )
-/// .with_network(Network::MonadMainnet);
+/// .with_network(network);
 /// # Ok(())
 /// # }
 /// ```

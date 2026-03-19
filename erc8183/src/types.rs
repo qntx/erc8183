@@ -4,10 +4,13 @@
 //! specification (Agentic Commerce Protocol) and provide ergonomic Rust
 //! wrappers around the raw contract return values.
 
-use alloy::primitives::{Address, B256, Bytes, FixedBytes, U256};
+use alloy::primitives::{Address, B256, U256};
 use serde::{Deserialize, Serialize};
 
 use crate::error::{Error, Result};
+
+/// Maximum value for `expiredAt` — the on-chain field is `uint48`.
+pub const MAX_EXPIRY: u64 = (1u64 << 48) - 1;
 
 /// The six possible states of a job in the Agentic Commerce Protocol.
 ///
@@ -69,7 +72,7 @@ impl std::fmt::Display for JobStatus {
 }
 
 /// A fully resolved job as returned by `getJob`.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Job {
     /// The on-chain job identifier.
     pub id: U256,
@@ -141,25 +144,12 @@ impl CreateJobParams {
     }
 }
 
-/// Parameters for submitting work on a job.
-#[derive(Debug, Clone)]
-pub struct SubmitParams {
-    /// The job ID.
-    pub job_id: U256,
-    /// Reference to the deliverable (e.g. IPFS CID hash, attestation commitment).
-    pub deliverable: FixedBytes<32>,
-    /// Optional parameters forwarded to the hook contract.
-    pub opt_params: Option<Bytes>,
-}
-
-/// Parameters for completing or rejecting a job.
-#[derive(Debug, Clone)]
-pub struct AttestParams {
-    /// The job ID.
-    pub job_id: U256,
-    /// Optional attestation reason (e.g. hash of off-chain evidence).
-    /// Defaults to `bytes32(0)` if not specified.
-    pub reason: FixedBytes<32>,
-    /// Optional parameters forwarded to the hook contract.
-    pub opt_params: Option<Bytes>,
+impl std::fmt::Display for Job {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "Job #{} [{}] budget={} client={} provider={}",
+            self.id, self.status, self.budget, self.client, self.provider,
+        )
+    }
 }

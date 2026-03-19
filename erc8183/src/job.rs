@@ -48,6 +48,12 @@ impl<P: Provider> JobHandle<P> {
         Self { address, provider }
     }
 
+    /// Returns the contract address this handle points to.
+    #[must_use]
+    pub const fn contract_address(&self) -> Address {
+        self.address
+    }
+
     /// Standard ERC-8183 interface — portable across any compliant contract.
     const fn standard(&self) -> IERC8183::IERC8183Instance<&P> {
         IERC8183::new(self.address, &self.provider)
@@ -476,8 +482,8 @@ impl<P: Provider> JobHandle<P> {
                     .ok()
                     .map(|e| e.inner.data.jobId)
             })
-            .ok_or(Error::Contract(alloy::contract::Error::UnknownFunction(
-                "createJob: no JobCreated event found".to_owned(),
-            )))
+            .ok_or(Error::EventNotFound {
+                context: "JobCreated event not found in createJob receipt",
+            })
     }
 }

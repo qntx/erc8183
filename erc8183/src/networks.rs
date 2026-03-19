@@ -9,6 +9,9 @@
 
 use alloy::primitives::{Address, address};
 
+const MONAD_MAINNET_RPC: &str = "https://rpc.monad.xyz";
+const MONAD_MAINNET_EXPLORER: &str = "https://monad.socialscan.io";
+
 /// The Monad Mainnet `AgenticCommerce` deployment.
 const MONAD_MAINNET: Address = address!("E8c4FFb4A6F7B8040a7AE39F6651290E06A40725");
 
@@ -40,6 +43,28 @@ impl Network {
         }
     }
 
+    /// Returns the public RPC endpoint URL for this network.
+    #[must_use]
+    pub const fn rpc_url(self) -> &'static str {
+        match self {
+            Self::MonadMainnet => MONAD_MAINNET_RPC,
+        }
+    }
+
+    /// Returns the block explorer base URL for this network.
+    #[must_use]
+    pub const fn explorer_base_url(self) -> &'static str {
+        match self {
+            Self::MonadMainnet => MONAD_MAINNET_EXPLORER,
+        }
+    }
+
+    /// Returns a block explorer URL for a given contract address.
+    #[must_use]
+    pub fn explorer_url(self, address: Address) -> String {
+        format!("{}/address/{address}", self.explorer_base_url())
+    }
+
     /// All known ERC-8183 network variants.
     pub const ALL: &[Self] = &[Self::MonadMainnet];
 
@@ -49,5 +74,13 @@ impl Network {
     #[must_use]
     pub fn from_chain_id(chain_id: u64) -> Option<Self> {
         Self::ALL.iter().find(|n| n.chain_id() == chain_id).copied()
+    }
+}
+
+impl std::fmt::Display for Network {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::MonadMainnet => write!(f, "Monad Mainnet"),
+        }
     }
 }

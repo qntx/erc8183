@@ -17,18 +17,17 @@
 //! use erc8183::{Erc8183, Network, types::CreateJobParams};
 //!
 //! # async fn example() -> Result<(), Box<dyn std::error::Error>> {
-//! // 1. Create an alloy provider (any transport works: HTTP, WS, IPC)
+//! // 1. Connect using the built-in RPC URL
+//! let network = Network::MonadMainnet;
 //! let provider = ProviderBuilder::new()
-//!     .connect_http("https://monad-rpc.example.com".parse()?);
+//!     .connect_http(network.rpc_url().parse()?);
 //!
-//! // 2. Wrap it with the ERC-8183 client
-//! let client = Erc8183::new(provider)
-//!     .with_network(Network::MonadMainnet);
+//! // 2. Create client and get a job handle
+//! let job = Erc8183::new(provider)
+//!     .with_network(network)
+//!     .job()?;
 //!
-//! // 3. Get a job handle for contract interactions
-//! let job = client.job()?;
-//!
-//! // 4. Create a job (requires signer-enabled provider)
+//! // 3. Create a job (requires signer-enabled provider)
 //! let params = CreateJobParams::new(
 //!     Address::ZERO,                // deferred provider
 //!     "0xEvaluator...".parse()?,    // evaluator
@@ -36,11 +35,10 @@
 //!     "Build a REST API",           // description
 //! );
 //! let job_id = job.create_job(&params).await?;
-//! println!("Created job: {job_id}");
 //!
-//! // 5. Query job data
+//! // 4. Query job data
 //! let data = job.get_job(job_id).await?;
-//! println!("Job status: {}", data.status);
+//! println!("{data}"); // "Job #1 [Open] budget=0 client=0x... provider=0x..."
 //! # Ok(())
 //! # }
 //! ```
