@@ -15,16 +15,8 @@ use alloy::{
     network::EthereumWallet,
     primitives::{FixedBytes, U256},
     providers::ProviderBuilder,
-    sol,
 };
 use erc8183::{Erc8183, Network, types::CreateJobParams};
-
-sol! {
-    #[sol(rpc)]
-    interface IERC20 {
-        function approve(address spender, uint256 amount) external returns (bool);
-    }
-}
 
 fn now_secs() -> u64 {
     SystemTime::now()
@@ -62,15 +54,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     job.set_budget(id, budget, None).await?;
     println!("[2/5] Budget set: {budget} (1 USDC)");
 
-    // 3. Approve USDC spend, then fund escrow
-    let usdc = job.payment_token().await?;
-    IERC20::new(usdc, &provider)
-        .approve(job.contract_address(), budget)
-        .send()
-        .await?
-        .get_receipt()
-        .await?;
-    job.fund(id, budget, None).await?;
+    // 3. Approve USDC + fund escrow (single convenience call)
+    job.approve_and_fund(id, budget, None).await?;
     println!("[3/5] Funded escrow");
 
     // 4. Submit work deliverable

@@ -19,6 +19,20 @@
 use alloy::sol;
 
 sol! {
+    /// Minimal ERC-20 interface for token approval operations.
+    ///
+    /// Only includes `approve` and `allowance` — the two functions needed
+    /// to interact with the payment token before funding a job.
+    #[allow(missing_docs)]
+    #[sol(rpc)]
+    interface IERC20 {
+        function approve(address spender, uint256 amount) external returns (bool);
+        function allowance(address owner, address spender) external view returns (uint256);
+        function balanceOf(address account) external view returns (uint256);
+    }
+}
+
+sol! {
     /// IERC8183 — Standard interface for the Agentic Commerce Protocol.
     ///
     /// Contains only spec-mandated lifecycle functions and recommended events.
