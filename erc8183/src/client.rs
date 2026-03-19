@@ -5,13 +5,15 @@
 //! ```rust,no_run
 //! use alloy::primitives::U256;
 //! use alloy::providers::ProviderBuilder;
-//! use erc8183::Erc8183;
+//! use erc8183::{Erc8183, Network};
 //!
 //! # async fn example() -> Result<(), Box<dyn std::error::Error>> {
 //! let provider = ProviderBuilder::new()
-//!     .connect_http("https://eth.llamarpc.com".parse()?);
+//!     .connect_http("https://monad-rpc.example.com".parse()?);
+//!
+//! // Built-in network (Monad Mainnet)
 //! let client = Erc8183::new(provider)
-//!     .with_address("0x1234...".parse()?);
+//!     .with_network(Network::MonadMainnet);
 //!
 //! let job = client.job()?.get_job(U256::from(1)).await?;
 //! # Ok(())
@@ -23,7 +25,7 @@ use alloy::{primitives::Address, providers::Provider};
 use crate::{
     error::{Error, Result},
     job::JobHandle,
-    networks::{Network, NetworkAddress},
+    networks::Network,
 };
 
 /// The main client for interacting with the ERC-8183 Agentic Commerce Protocol.
@@ -35,19 +37,34 @@ use crate::{
 ///
 /// # Examples
 ///
+/// Built-in network:
+///
 /// ```rust,no_run
-/// use alloy::primitives::U256;
+/// use alloy::providers::ProviderBuilder;
+/// use erc8183::{Erc8183, Network};
+///
+/// # async fn example() -> Result<(), Box<dyn std::error::Error>> {
+/// let client = Erc8183::new(
+///     ProviderBuilder::new()
+///         .connect_http("https://monad-rpc.example.com".parse()?),
+/// )
+/// .with_network(Network::MonadMainnet);
+/// # Ok(())
+/// # }
+/// ```
+///
+/// Custom deployment:
+///
+/// ```rust,no_run
 /// use alloy::providers::ProviderBuilder;
 /// use erc8183::Erc8183;
 ///
 /// # async fn example() -> Result<(), Box<dyn std::error::Error>> {
-/// let provider = ProviderBuilder::new()
-///     .connect_http("https://eth.llamarpc.com".parse()?);
-///
-/// let client = Erc8183::new(provider)
-///     .with_address("0x1234...".parse()?);
-///
-/// let job = client.job()?.get_job(U256::from(1)).await?;
+/// let client = Erc8183::new(
+///     ProviderBuilder::new()
+///         .connect_http("https://rpc.example.com".parse()?),
+/// )
+/// .with_address("0x1234...".parse()?);
 /// # Ok(())
 /// # }
 /// ```
@@ -74,19 +91,13 @@ impl<P: Provider> Erc8183<P> {
     /// Configure the contract address from a pre-defined [`Network`].
     #[must_use]
     pub const fn with_network(mut self, network: Network) -> Self {
-        let addr = network.address();
-        self.contract_address = Some(addr.agentic_commerce);
+        self.contract_address = Some(network.address());
         self
     }
 
-    /// Configure the contract address from a [`NetworkAddress`] struct.
-    #[must_use]
-    pub const fn with_addresses(mut self, addr: NetworkAddress) -> Self {
-        self.contract_address = Some(addr.agentic_commerce);
-        self
-    }
-
-    /// Set a custom Agentic Commerce contract address.
+    /// Set a custom `AgenticCommerce` contract address.
+    ///
+    /// Use this for deployments not yet listed in [`Network`].
     #[must_use]
     pub const fn with_address(mut self, address: Address) -> Self {
         self.contract_address = Some(address);

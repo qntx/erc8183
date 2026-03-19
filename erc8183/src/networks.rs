@@ -1,47 +1,34 @@
 //! Pre-configured network definitions with known contract addresses.
 //!
-//! ERC-8183 is currently in **Draft** status. Contract addresses listed here
-//! are placeholders for future deployments. Once official CREATE2 deployments
-//! are published, this module will be updated with the canonical addresses.
+//! Each [`Network`] variant represents a chain where the ERC-8183
+//! `AgenticCommerce` contract has been officially deployed.
+//! Only networks with **live deployments** are listed.
+//!
+//! For custom or private deployments, use
+//! [`Erc8183::with_address`](crate::Erc8183::with_address) directly.
 
-use alloy::primitives::Address;
+use alloy::primitives::{Address, address};
 
-/// Known contract address for a specific network deployment.
-#[derive(Debug, Clone, Copy)]
-pub struct NetworkAddress {
-    /// The Agentic Commerce contract address.
-    pub agentic_commerce: Address,
-}
+/// The Monad Mainnet `AgenticCommerce` deployment.
+const MONAD_MAINNET: Address = address!("E8c4FFb4A6F7B8040a7AE39F6651290E06A40725");
 
 /// Pre-defined network configurations for ERC-8183 deployments.
 ///
-/// **Note:** ERC-8183 is currently a Draft EIP. The addresses below are
-/// placeholders and will be updated once official deployments are available.
+/// Only networks with live contract deployments are included.
+/// For unlisted chains, use [`Erc8183::with_address`](crate::Erc8183::with_address).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 #[non_exhaustive]
 pub enum Network {
-    /// Ethereum Mainnet (chain ID 1).
-    EthereumMainnet,
-    /// Ethereum Sepolia testnet (chain ID 11155111).
-    EthereumSepolia,
-    /// Base Mainnet (chain ID 8453).
-    BaseMainnet,
-    /// Base Sepolia testnet (chain ID 84532).
-    BaseSepolia,
+    /// Monad Mainnet (chain ID 143).
+    MonadMainnet,
 }
 
 impl Network {
-    /// Returns the known contract address for this network.
-    ///
-    /// # Panics
-    ///
-    /// This function does not panic but currently returns zero addresses
-    /// since ERC-8183 has no official deployments yet.
+    /// Returns the deployed `AgenticCommerce` contract address for this network.
     #[must_use]
-    pub const fn address(self) -> NetworkAddress {
-        // TODO: Replace with actual CREATE2 deterministic addresses once deployed.
-        NetworkAddress {
-            agentic_commerce: Address::ZERO,
+    pub const fn address(self) -> Address {
+        match self {
+            Self::MonadMainnet => MONAD_MAINNET,
         }
     }
 
@@ -49,20 +36,12 @@ impl Network {
     #[must_use]
     pub const fn chain_id(self) -> u64 {
         match self {
-            Self::EthereumMainnet => 1,
-            Self::EthereumSepolia => 11_155_111,
-            Self::BaseMainnet => 8453,
-            Self::BaseSepolia => 84532,
+            Self::MonadMainnet => 143,
         }
     }
 
     /// All known ERC-8183 network variants.
-    pub const ALL: &[Self] = &[
-        Self::EthereumMainnet,
-        Self::EthereumSepolia,
-        Self::BaseMainnet,
-        Self::BaseSepolia,
-    ];
+    pub const ALL: &[Self] = &[Self::MonadMainnet];
 
     /// Look up a [`Network`] by its EIP-155 chain ID.
     ///

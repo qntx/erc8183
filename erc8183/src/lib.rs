@@ -14,19 +14,19 @@
 //! ```rust,no_run
 //! use alloy::primitives::{Address, U256};
 //! use alloy::providers::ProviderBuilder;
-//! use erc8183::{Erc8183, types::CreateJobParams};
+//! use erc8183::{Erc8183, Network, types::CreateJobParams};
 //!
 //! # async fn example() -> Result<(), Box<dyn std::error::Error>> {
 //! // 1. Create an alloy provider (any transport works: HTTP, WS, IPC)
 //! let provider = ProviderBuilder::new()
-//!     .connect_http("https://eth.llamarpc.com".parse()?);
+//!     .connect_http("https://monad-rpc.example.com".parse()?);
 //!
-//! // 2. Wrap it with the ERC-8183 client (no official deployment yet)
+//! // 2. Wrap it with the ERC-8183 client
 //! let client = Erc8183::new(provider)
-//!     .with_address("0x1234...".parse()?);
+//!     .with_network(Network::MonadMainnet);
 //!
 //! // 3. Get a job handle for contract interactions
-//! let job_handle = client.job()?;
+//! let job = client.job()?;
 //!
 //! // 4. Create a job (requires signer-enabled provider)
 //! let params = CreateJobParams::new(
@@ -35,12 +35,12 @@
 //!     U256::from(1_700_000_000u64), // expiredAt
 //!     "Build a REST API",           // description
 //! );
-//! let job_id = job_handle.create_job(&params).await?;
+//! let job_id = job.create_job(&params).await?;
 //! println!("Created job: {job_id}");
 //!
 //! // 5. Query job data
-//! let job = job_handle.get_job(job_id).await?;
-//! println!("Job status: {}", job.status);
+//! let data = job.get_job(job_id).await?;
+//! println!("Job status: {}", data.status);
 //! # Ok(())
 //! # }
 //! ```
@@ -51,10 +51,12 @@
 //!
 //! - **[`Erc8183`]** — The top-level client, generic over `P: Provider`.
 //!   Accepts any alloy provider the user has already configured.
+//!   Use [`with_network`](Erc8183::with_network) for built-in deployments or
+//!   [`with_address`](Erc8183::with_address) for custom contracts.
 //! - **[`JobHandle`](job::JobHandle)** — Job lifecycle + view + admin.
 //!   Core operations use the standard [`IERC8183`](contracts::IERC8183) binding
 //!   (portable); view/admin use [`AgenticCommerce`](contracts::AgenticCommerce).
-//! - **[`Network`]** — Pre-configured network addresses for known deployments.
+//! - **[`Network`]** — Pre-configured addresses for live deployments.
 //! - **[`types`]** — Domain types: [`JobStatus`](types::JobStatus),
 //!   [`Job`](types::Job), [`CreateJobParams`](types::CreateJobParams), etc.
 //! - **[`contracts`]** — Three-layer `sol!` bindings:

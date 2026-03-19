@@ -26,7 +26,7 @@
 Type-safe Rust SDK for the [ERC-8183](https://eips.ethereum.org/EIPS/eip-8183) Agentic Commerce Protocol.
 On-chain job escrow with evaluator attestation for AI agent commerce.
 
-[Quick Start](#quick-start) | [Protocol Reference](#erc-8183-protocol) | [API docs][doc-url]
+[Quick Start](#quick-start) | [Protocol](#erc-8183-protocol) | [API docs][doc-url]
 
 </div>
 
@@ -37,37 +37,55 @@ ERC-8183 enables **trustless commerce between AI agents**: a client locks funds 
 This SDK provides type-safe Rust bindings for the protocol, built on [alloy](https://github.com/alloy-rs/alloy).
 
 > [!NOTE]
-> ERC-8183 is currently a **Draft** EIP. See [SECURITY.md](SECURITY.md) before production use.
->
-> Reference implementation: **[qntx/market-contract](https://github.com/qntx/market-contract)**
+> Reference implementation: **[qntx/market-contract](https://github.com/qntx/market-contract)**, See [SECURITY.md](SECURITY.md) before production use.
+
+## Deployments
+
+| Network | Chain ID | Contract | Payment Token | Explorer |
+| --- | --- | --- | --- | --- |
+| **Monad Mainnet** | 143 | [`0xE8c4FFb4A6F7B8040a7AE39F6651290E06A40725`](https://monad.socialscan.io/address/0xE8c4FFb4A6F7B8040a7AE39F6651290E06A40725) | USDC | [Socialscan](https://monad.socialscan.io/address/0xE8c4FFb4A6F7B8040a7AE39F6651290E06A40725) |
 
 ## Quick Start
 
 ```rust
-use erc8183::{Erc8183, types::CreateJobParams};
+use erc8183::{Erc8183, Network, types::CreateJobParams};
+use alloy::primitives::{Address, U256};
 
-// Connect to contract
-let job = Erc8183::new(provider).with_address(contract_addr).job()?;
+// Connect to Monad Mainnet
+let sdk = Erc8183::new(provider).with_network(Network::MonadMainnet);
+let job = sdk.job()?;
 
-// Create → Fund → Submit → Complete
-let id = job.create_job(&CreateJobParams::new(provider, evaluator, expires, "task")).await?;
-job.fund(id, budget, None).await?;
-job.submit(id, deliverable, None).await?;
-job.complete(id, reason, None).await?;
+// Create a job (caller becomes client)
+let params = CreateJobParams::new(
+    provider_addr,                    // provider
+    evaluator_addr,                   // evaluator
+    U256::from(1_800_000_000u64),     // expiredAt (Unix timestamp)
+    "Analyze market data",            // description
+);
+let job_id = job.create_job(&params).await?;
 
-// Query
-let data = job.get_job(id).await?;
+// Fund the escrow (requires ERC-20 approval first)
+job.set_budget(job_id, U256::from(1_000_000), None).await?;
+job.fund(job_id, U256::from(1_000_000), None).await?;
+
+// Provider submits work
+job.submit(job_id, deliverable_hash, None).await?;
+
+// Evaluator completes — releases payment to provider
+job.complete(job_id, FixedBytes::ZERO, None).await?;
+
+// Query job state
+let data = job.get_job(job_id).await?;
+println!("Status: {} (terminal: {})", data.status, data.status.is_terminal());
 ```
-
-The full API mirrors the on-chain functions: `set_provider`, `set_budget`, `reject`, `claim_refund`, plus view/admin methods like `total_jobs`, `payment_token`, `set_platform_fee`, etc.
 
 ### Three-Layer Bindings
 
 | Layer | Binding | Scope |
 | --- | --- | --- |
-| **Standard** | [`IERC8183`](erc8183/src/contracts.rs) | Spec-mandated lifecycle functions and events. Works with **any** ERC-8183 contract. |
-| **Implementation** | [`AgenticCommerce`](erc8183/src/contracts.rs) | Full QNTX ABI: `Job` struct, custom errors, admin functions, view getters, `Ownable2Step`. |
-| **Hook** | [`IACPHook`](erc8183/src/contracts.rs) | Normative hook interface. `beforeAction` / `afterAction` callbacks. |
+| **Standard** | `IERC8183` | Spec-mandated lifecycle functions and events. Works with **any** ERC-8183 contract. |
+| **Hook** | `IACPHook` | Normative hook interface. `beforeAction` / `afterAction` callbacks. |
+| **Implementation** | `AgenticCommerce` | Full QNTX ABI: `Job` struct, custom errors, admin functions, view getters, `Ownable2Step`. |
 
 Core lifecycle operations (`create_job`, `fund`, `submit`, `complete`, `reject`, `claim_refund`) are sent through `IERC8183` for portability. View and admin operations use `AgenticCommerce`.
 
@@ -128,16 +146,6 @@ use erc8183::hooks;
 
 assert_eq!(hooks::SEL_FUND, erc8183::contracts::IERC8183::fundCall::SELECTOR.into());
 ```
-
-## Design Principles
-
-| Principle | Detail |
-| --- | --- |
-| **Zero `async_trait`** | Pure RPITIT — no trait-object overhead, no heap allocation per call |
-| **Inline `sol!` bindings** | Preserves struct names and visibility; no JSON ABI files to manage |
-| **Provider-generic** | Works with any alloy transport (HTTP, WebSocket, IPC) and signer |
-| **Layered bindings** | `IERC8183` for portability, `AgenticCommerce` for full access |
-| **Strict linting** | `clippy::pedantic` + `nursery` + `correctness` (deny) |
 
 ## Related Standards
 
