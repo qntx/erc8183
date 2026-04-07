@@ -1705,10 +1705,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "erc8183-cli"
-version = "0.5.0"
-
-[[package]]
 name = "errno"
 version = "0.3.14"
 source = "registry+https://github.com/rust-lang/crates.io-index"

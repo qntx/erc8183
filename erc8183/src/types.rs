@@ -73,6 +73,7 @@ impl std::fmt::Display for JobStatus {
 
 /// A fully resolved job as returned by `getJob`.
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[non_exhaustive]
 pub struct Job {
     /// The on-chain job identifier.
     pub id: U256,
@@ -102,6 +103,7 @@ pub struct Job {
 /// Use the builder methods to configure optional fields before passing
 /// to [`Job::create_job`](crate::job::JobHandle::create_job).
 #[derive(Debug, Clone)]
+#[non_exhaustive]
 pub struct CreateJobParams {
     /// Provider address. Use [`Address::ZERO`] for deferred provider assignment.
     pub provider: Address,
@@ -151,5 +153,105 @@ impl std::fmt::Display for Job {
             "Job #{} [{}] budget={} client={} provider={}",
             self.id, self.status, self.budget, self.client, self.provider,
         )
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use alloy::primitives::{Address, U256};
+
+    use super::*;
+
+    const STATUS_TABLE: [(u8, JobStatus, &str, bool); 6] = [
+        (0, JobStatus::Open, "Open", false),
+        (1, JobStatus::Funded, "Funded", false),
+        (2, JobStatus::Submitted, "Submitted", false),
+        (3, JobStatus::Completed, "Completed", true),
+        (4, JobStatus::Rejected, "Rejected", true),
+        (5, JobStatus::Expired, "Expired", true),
+    ];
+
+    #[test]
+    fn job_status_from_u8_roundtrip() {
+        for &(raw, expected, _, _) in &STATUS_TABLE {
+            let parsed = JobStatus::from_u8(raw).unwrap();
+            assert_eq!(parsed, expected, "from_u8({raw})");
+            assert_eq!(parsed as u8, raw, "{expected:?} repr");
+        }
+    }
+
+    #[test]
+    fn job_status_from_u8_rejects_out_of_range() {
+        for v in (u8::try_from(STATUS_TABLE.len()).unwrap())..=255 {
+            assert!(
+                JobStatus::from_u8(v).is_err(),
+                "expected error for status {v}"
+            );
+        }
+    }
+
+    #[test]
+    fn job_status_is_terminal() {
+        for &(_, variant, _, terminal) in &STATUS_TABLE {
+            assert_eq!(variant.is_terminal(), terminal, "{variant:?}");
+        }
+    }
+
+    #[test]
+    fn job_status_display() {
+        for &(_, variant, label, _) in &STATUS_TABLE {
+            assert_eq!(variant.to_string(), label, "{variant:?}");
+        }
+    }
+
+    #[test]
+    fn create_job_params_new_sets_all_fields() {
+        let provider = Address::repeat_byte(0x01);
+        let evaluator = Address::repeat_byte(0x02);
+        let expired_at = U256::from(1_700_000_000);
+        let params = CreateJobParams::new(provider, evaluator, expired_at, "my job");
+        assert_eq!(params.provider, provider);
+        assert_eq!(params.evaluator, evaluator);
+        assert_eq!(params.expired_at, expired_at);
+        assert_eq!(params.description, "my job");
+        assert_eq!(params.hook, Address::ZERO, "hook should default to ZERO");
+    }
+
+    #[test]
+    fn create_job_params_with_hook() {
+        let hook = Address::repeat_byte(0xAB);
+        let params = CreateJobParams::new(Address::ZERO, Address::ZERO, U256::from(1000), "test")
+            .with_hook(hook);
+        assert_eq!(params.hook, hook);
+    }
+
+    #[test]
+    fn job_display_contains_all_fields() {
+        let client = Address::repeat_byte(0x11);
+        let provider = Address::repeat_byte(0x22);
+        let job = Job {
+            id: U256::from(42),
+            client,
+            provider,
+            evaluator: Address::ZERO,
+            description: String::new(),
+            budget: U256::from(100),
+            expired_at: U256::ZERO,
+            status: JobStatus::Funded,
+            hook: Address::ZERO,
+            deliverable: B256::ZERO,
+        };
+        let s = job.to_string();
+        assert!(s.contains("#42"), "missing job id: {s}");
+        assert!(s.contains("[Funded]"), "missing status: {s}");
+        assert!(s.contains("budget=100"), "missing budget: {s}");
+        assert!(
+            s.contains(&format!("client={client}")),
+            "missing client: {s}"
+        );
+        assert!(
+            s.contains(&format!("provider={provider}")),
+            "missing provider: {s}"
+        );
     }
 }

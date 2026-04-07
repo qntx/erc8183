@@ -40,6 +40,13 @@ pub enum SdkError {
         /// The raw status value returned by the contract.
         status: u8,
     },
+
+    /// The chain ID does not correspond to a known ERC-8183 deployment.
+    #[error("unknown chain ID: {chain_id}")]
+    UnknownChainId {
+        /// The unrecognised chain ID.
+        chain_id: u64,
+    },
 }
 
 /// A convenience type alias used throughout the SDK.
@@ -80,5 +87,91 @@ pub fn decode_revert_reason(data: &[u8]) -> Option<&'static str> {
         AgenticCommerce::OwnableUnauthorizedAccount::SELECTOR => Some("OwnableUnauthorizedAccount"),
         AgenticCommerce::OwnableInvalidOwner::SELECTOR => Some("OwnableInvalidOwner"),
         _ => None,
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn decode_revert_returns_none_for_unknown() {
+        assert_eq!(decode_revert_reason(&[0xFF, 0xFF, 0xFF, 0xFF]), None);
+    }
+
+    #[test]
+    fn decode_revert_returns_none_for_short_input() {
+        assert_eq!(decode_revert_reason(&[0x01, 0x02, 0x03]), None);
+        assert_eq!(decode_revert_reason(&[]), None);
+    }
+
+    #[test]
+    fn decode_revert_all_custom_errors() {
+        let selectors: &[([u8; 4], &str)] = &[
+            (AgenticCommerce::ZeroAddress::SELECTOR, "ZeroAddress"),
+            (AgenticCommerce::InvalidExpiry::SELECTOR, "InvalidExpiry"),
+            (AgenticCommerce::InvalidStatus::SELECTOR, "InvalidStatus"),
+            (AgenticCommerce::Unauthorized::SELECTOR, "Unauthorized"),
+            (
+                AgenticCommerce::ProviderAlreadySet::SELECTOR,
+                "ProviderAlreadySet",
+            ),
+            (AgenticCommerce::ProviderNotSet::SELECTOR, "ProviderNotSet"),
+            (AgenticCommerce::BudgetMismatch::SELECTOR, "BudgetMismatch"),
+            (AgenticCommerce::ZeroBudget::SELECTOR, "ZeroBudget"),
+            (
+                AgenticCommerce::JobAlreadyExpired::SELECTOR,
+                "JobAlreadyExpired",
+            ),
+            (AgenticCommerce::JobNotExpired::SELECTOR, "JobNotExpired"),
+            (AgenticCommerce::FeeTooHigh::SELECTOR, "FeeTooHigh"),
+            (
+                AgenticCommerce::JobDoesNotExist::SELECTOR,
+                "JobDoesNotExist",
+            ),
+            (
+                AgenticCommerce::HookNotWhitelisted::SELECTOR,
+                "HookNotWhitelisted",
+            ),
+            (
+                AgenticCommerce::HookInterfaceNotSupported::SELECTOR,
+                "HookInterfaceNotSupported",
+            ),
+            (
+                AgenticCommerce::DescriptionTooLong::SELECTOR,
+                "DescriptionTooLong",
+            ),
+            (
+                AgenticCommerce::OwnableUnauthorizedAccount::SELECTOR,
+                "OwnableUnauthorizedAccount",
+            ),
+            (
+                AgenticCommerce::OwnableInvalidOwner::SELECTOR,
+                "OwnableInvalidOwner",
+            ),
+        ];
+        for (sel, name) in selectors {
+            assert_eq!(
+                decode_revert_reason(sel),
+                Some(*name),
+                "selector {sel:02x?} should decode to {name}"
+            );
+        }
+    }
+
+    #[test]
+    fn error_display_messages() {
+        assert_eq!(
+            SdkError::ContractNotConfigured.to_string(),
+            "contract not configured"
+        );
+        assert_eq!(
+            SdkError::InvalidJobStatus { status: 99 }.to_string(),
+            "invalid job status: 99"
+        );
+        assert_eq!(
+            SdkError::UnknownChainId { chain_id: 42 }.to_string(),
+            "unknown chain ID: 42"
+        );
     }
 }

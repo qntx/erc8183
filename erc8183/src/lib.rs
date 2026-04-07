@@ -33,7 +33,7 @@
 //!     U256::from(1_700_000_000u64), // expiredAt
 //!     "Build a REST API",           // description
 //! );
-//! let job_id = job.create_job(&params).await?;
+//! let job_id = job.create_job(params).await?;
 //!
 //! // 4. Query job data
 //! let data = job.get_job(job_id).await?;

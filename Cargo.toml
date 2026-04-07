@@ -1,5 +1,5 @@
 [workspace]
-members = ["erc8183", "erc8183-cli"]
+members = ["erc8183"]
 default-members = ["erc8183"]
 resolver = "3"
 
@@ -11,8 +11,6 @@ repository = "https://github.com/qntx/erc8183"
 description = "The Commerce Layer for AI Agents."
 
 [workspace.dependencies]
-erc8183 = { version = "0.5", path = "erc8183" }
-
 alloy = { version = "1", features = ["full"] }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"

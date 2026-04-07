@@ -9,6 +9,8 @@
 
 use alloy::primitives::{Address, address};
 
+use crate::error::{Result, SdkError};
+
 const MONAD_MAINNET_RPC: &str = "https://rpc.monad.xyz";
 const MONAD_MAINNET_EXPLORER: &str = "https://monad.socialscan.io";
 
@@ -67,13 +69,23 @@ impl Network {
 
     /// All known ERC-8183 network variants.
     pub const ALL: &[Self] = &[Self::MonadMainnet];
+}
+
+impl TryFrom<u64> for Network {
+    type Error = SdkError;
 
     /// Look up a [`Network`] by its EIP-155 chain ID.
     ///
-    /// Returns [`None`] if the chain ID is not a known ERC-8183 deployment.
-    #[must_use]
-    pub fn from_chain_id(chain_id: u64) -> Option<Self> {
-        Self::ALL.iter().find(|n| n.chain_id() == chain_id).copied()
+    /// # Errors
+    ///
+    /// Returns [`SdkError::UnknownChainId`] if the chain ID is not a known
+    /// ERC-8183 deployment.
+    fn try_from(chain_id: u64) -> Result<Self> {
+        Self::ALL
+            .iter()
+            .find(|n| n.chain_id() == chain_id)
+            .copied()
+            .ok_or(SdkError::UnknownChainId { chain_id })
     }
 }
 
@@ -82,5 +94,55 @@ impl std::fmt::Display for Network {
         match self {
             Self::MonadMainnet => write!(f, "Monad Mainnet"),
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn try_from_valid_chain_id() {
+        let net = Network::try_from(143).unwrap();
+        assert_eq!(net, Network::MonadMainnet);
+    }
+
+    #[test]
+    fn try_from_invalid_chain_id() {
+        assert!(Network::try_from(999).is_err());
+    }
+
+    #[test]
+    fn all_roundtrips_via_try_from() {
+        for net in Network::ALL {
+            let resolved = Network::try_from(net.chain_id()).unwrap();
+            assert_eq!(*net, resolved);
+        }
+    }
+
+    #[test]
+    fn monad_mainnet_properties() {
+        let net = Network::MonadMainnet;
+        assert_eq!(net.chain_id(), 143);
+        assert!(!net.address().is_zero());
+        assert!(net.rpc_url().starts_with("https://"));
+        assert!(net.explorer_base_url().starts_with("https://"));
+    }
+
+    #[test]
+    fn explorer_url_contains_address() {
+        let net = Network::MonadMainnet;
+        let addr = net.address();
+        let url = net.explorer_url(addr);
+        assert!(url.starts_with(net.explorer_base_url()));
+        assert!(
+            url.contains(&format!("{addr}")),
+            "URL should embed the address: {url}"
+        );
+    }
+
+    #[test]
+    fn display() {
+        assert_eq!(Network::MonadMainnet.to_string(), "Monad Mainnet");
     }
 }

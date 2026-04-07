@@ -52,7 +52,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // 1. Create job — one wallet is client, provider, and evaluator
     let expires_at = U256::from(now_secs() + 3600);
     let params = CreateJobParams::new(addr, addr, expires_at, "Analyze market data");
-    let id = job.create_job(&params).await?;
+    let id = job.create_job(params).await?;
     println!("[1/5] Created job #{id}");
 
     // 2. Set budget (1 USDC = 1_000_000 units with 6 decimals)
