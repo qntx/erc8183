@@ -17,15 +17,21 @@ use alloy::{
     providers::ProviderBuilder,
 };
 use erc8183::{Erc8183, Network, types::CreateJobParams};
+use serde as _;
+use serde_json as _;
+use thiserror as _;
 
 fn now_secs() -> u64 {
     SystemTime::now()
         .duration_since(SystemTime::UNIX_EPOCH)
-        .expect("system clock before epoch")
+        .unwrap_or_default()
         .as_secs()
 }
 
-#[allow(clippy::print_stdout)]
+#[expect(
+    clippy::print_stdout,
+    reason = "example binary uses stdout for user output"
+)]
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let network = Network::MonadMainnet;

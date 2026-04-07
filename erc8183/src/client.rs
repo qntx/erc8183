@@ -23,7 +23,7 @@
 use alloy::{primitives::Address, providers::Provider};
 
 use crate::{
-    error::{Error, Result},
+    error::{Result, SdkError},
     job::JobHandle,
     networks::Network,
 };
@@ -109,10 +109,12 @@ impl<P: Provider> Erc8183<P> {
     ///
     /// # Errors
     ///
-    /// Returns [`Error::ContractNotConfigured`] if the contract address
+    /// Returns [`SdkError::ContractNotConfigured`] if the contract address
     /// has not been set.
     pub fn job(&self) -> Result<JobHandle<&P>> {
-        let address = self.contract_address.ok_or(Error::ContractNotConfigured)?;
+        let address = self
+            .contract_address
+            .ok_or(SdkError::ContractNotConfigured)?;
         Ok(JobHandle::new(&self.provider, address))
     }
 

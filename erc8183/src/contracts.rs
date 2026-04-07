@@ -23,7 +23,6 @@ sol! {
     ///
     /// Only includes `approve` and `allowance` — the two functions needed
     /// to interact with the payment token before funding a job.
-    #[allow(missing_docs)]
     #[sol(rpc)]
     interface IERC20 {
         function approve(address spender, uint256 amount) external returns (bool);
@@ -39,7 +38,6 @@ sol! {
     /// Use this binding for portable interactions with **any** ERC-8183 contract.
     /// For implementation-specific features (admin, view, errors), use
     /// [`AgenticCommerce`] instead.
-    #[allow(missing_docs, clippy::too_many_arguments)]
     #[sol(rpc)]
     interface IERC8183 {
         // Spec-recommended events
@@ -80,7 +78,6 @@ sol! {
     /// - `submit`: `abi.encode(bytes32 deliverable, bytes optParams)`
     /// - `complete`: `abi.encode(bytes32 reason, bytes optParams)`
     /// - `reject`: `abi.encode(bytes32 reason, bytes optParams)`
-    #[allow(missing_docs)]
     #[sol(rpc)]
     interface IACPHook {
         function beforeAction(uint256 jobId, bytes4 selector, bytes calldata data) external;
@@ -100,7 +97,6 @@ sol! {
     ///
     /// Use this binding when targeting the QNTX `AgenticCommerce` contract.
     /// For portable interactions with any ERC-8183 contract, use [`IERC8183`].
-    #[allow(missing_docs, clippy::too_many_arguments)]
     #[sol(rpc)]
     contract AgenticCommerce {
         /// Minimal job descriptor returned by `getJob()`.

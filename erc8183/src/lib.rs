@@ -72,5 +72,7 @@ pub mod types;
 
 // Re-export primary public API at crate root.
 pub use client::Erc8183;
-pub use error::{Error, Result};
+pub use error::{Result, SdkError};
 pub use networks::Network;
+#[cfg(test)]
+use tokio as _;

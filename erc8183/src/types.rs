@@ -7,7 +7,7 @@
 use alloy::primitives::{Address, B256, U256};
 use serde::{Deserialize, Serialize};
 
-use crate::error::{Error, Result};
+use crate::error::{Result, SdkError};
 
 /// Maximum value for `expiredAt` — the on-chain field is `uint48`.
 pub const MAX_EXPIRY: u64 = (1u64 << 48) - 1;
@@ -38,7 +38,7 @@ impl JobStatus {
     ///
     /// # Errors
     ///
-    /// Returns [`Error::InvalidJobStatus`] if the value is out of range.
+    /// Returns [`SdkError::InvalidJobStatus`] if the value is out of range.
     pub const fn from_u8(value: u8) -> Result<Self> {
         match value {
             0 => Ok(Self::Open),
@@ -47,7 +47,7 @@ impl JobStatus {
             3 => Ok(Self::Completed),
             4 => Ok(Self::Rejected),
             5 => Ok(Self::Expired),
-            _ => Err(Error::InvalidJobStatus { status: value }),
+            _ => Err(SdkError::InvalidJobStatus { status: value }),
         }
     }
 

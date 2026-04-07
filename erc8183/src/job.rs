@@ -22,7 +22,7 @@ use alloy::{
 
 use crate::{
     contracts::{AgenticCommerce, IERC20, IERC8183},
-    error::{Error, Result},
+    error::{Result, SdkError},
     types::{CreateJobParams, Job, JobStatus},
 };
 
@@ -547,7 +547,7 @@ impl<P: Provider> JobHandle<P> {
                     .ok()
                     .map(|e| e.inner.data.jobId)
             })
-            .ok_or(Error::EventNotFound {
+            .ok_or(SdkError::EventNotFound {
                 context: "JobCreated event not found in createJob receipt",
             })
     }
