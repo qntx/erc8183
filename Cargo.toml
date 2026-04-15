@@ -11,7 +11,7 @@ repository = "https://github.com/qntx/erc8183"
 description = "The Commerce Layer for AI Agents."
 
 [workspace.dependencies]
-alloy = { version = "1", features = ["full"] }
+alloy = { version = "2", features = ["full"] }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 thiserror = "2"
