@@ -12,8 +12,8 @@
 [![License][license-badge]][license-url]
 [![Rust][rust-badge]][rust-url]
 
-[ci-badge]: https://github.com/qntx/erc8183/actions/workflows/rust.yml/badge.svg
-[ci-url]: https://github.com/qntx/erc8183/actions/workflows/rust.yml
+[ci-badge]: https://github.com/qntx/erc8183/actions/workflows/ci.yml/badge.svg
+[ci-url]: https://github.com/qntx/erc8183/actions/workflows/ci.yml
 [crate-badge]: https://img.shields.io/crates/v/erc8183.svg
 [crate-url]: https://crates.io/crates/erc8183
 [doc-badge]: https://img.shields.io/docsrs/erc8183.svg
